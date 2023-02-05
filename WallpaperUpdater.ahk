@@ -4,7 +4,7 @@
 
 #Requires AutoHotkey v2.0
 #Include <Yaml>
-
+;TraySetIcon("WallpaperUpdater.ico")
 CONFIG_FILE_PATH := "Config.yaml"
 exePath := "WallpaperChanger.exe" ; Path to wallpaperChanger.exe
 MonitorDefault := {Path: "", Index: 0}
@@ -12,10 +12,10 @@ last_update := A_Now
 interval := 1440 ; Update interval (minutes)
 CONFIG_OBJ:={ExePath: exePath, Monitor: [MonitorDefault.Clone(), MonitorDefault.Clone()], Update: last_update, Interval: interval}
 YAML_OBJ := Yaml("")
-
 trayMenu := A_TrayMenu
 trayMenu.Delete()
 trayMenu.Add("Config", openConfigWindow)
+trayMenu.Add("Next", changeNext)
 trayMenu.Default := "Config"
 trayMenu.Add("Exit", trayExit)
 
@@ -60,13 +60,15 @@ updatePath(path, editCtl, monitorObj, params*){
     monitorObj.Path := path
     monitorObj.Index := 0
 }
+
 openImagePath( editCtl, monitorObj, option:="", params*){
     if option
         path := FileSelect("D3", ,"Select Image Folder")
     else
-        path := FileSelect("3", ,"Select Image", "Image Files (*.jpeg; *.jpg; *.png; *.bmp; *.webp)")
+        path := FileSelect("3", ,"Select Image", "Image Files (*.jpeg; *.jpg; *.png; *.bmp)")
 
-    updatePath(path, editCtl, monitorObj)
+    if path
+        updatePath(path, editCtl, monitorObj)
 }
 
 ; Save Config file in yaml
@@ -151,7 +153,7 @@ init(){
 
     if InStr(f1e, "D"){
         loop files, CONFIG_OBJ.Monitor[1].Path "\*.*"{
-            if RegExMatch(A_LoopFileFullPath, "i)^.*\.(?:jpg|jpeg|png|bmp|webp)$")
+            if RegExMatch(A_LoopFileFullPath, "i)^.*\.(?:jpg|jpeg|png|bmp)$")
                 imageArr1.Push(A_LoopFileFullPath)
         }
     }
@@ -161,7 +163,7 @@ init(){
 
     if InStr(f2e, "D"){
         loop files, CONFIG_OBJ.Monitor[2].Path "\*.*"{
-            if RegExMatch(A_LoopFileFullPath, "i)^.*\.(?:jpg|jpeg|png|bmp|webp)$")
+            if RegExMatch(A_LoopFileFullPath, "i)^.*\.(?:jpg|jpeg|png|bmp)$")
                 imageArr2.Push(A_LoopFileFullPath)
         }
     }
@@ -170,35 +172,40 @@ init(){
     }
 }
 
+changeNext(*){
+    ; Change for Monitor1
+    len := imageArr1.Length
+    idx := CONFIG_OBJ.Monitor[1].Index + 1
+    if idx > len
+        idx := 1
+    ChangeWallpaper(imageArr1[idx], 1)
+    CONFIG_OBJ.Monitor[1].Index := idx
+
+    ; Change for Monitor2
+    len := imageArr2.Length
+    idx := CONFIG_OBJ.Monitor[2].Index + 1
+    if idx > len
+        idx := 1
+    ChangeWallpaper(imageArr2[idx], 2)
+    CONFIG_OBJ.Monitor[2].Index := idx
+
+    ; Update last modify time
+    CONFIG_OBJ.Update := A_Now
+
+    ; Dump updates into config file
+    saveConfigFile(CONFIG_FILE_PATH)
+}
+
 WatchWallpaper(){
     diff := DateDiff(A_Now, CONFIG_OBJ.Update, "Minutes")
     if( diff >= CONFIG_OBJ.Interval){
-        ; Change for Monitor1
-        len := imageArr1.Length
-        idx := CONFIG_OBJ.Monitor[1].Index + 1
-        if idx > len
-            idx := 1
-        ChangeWallpaper(imageArr1[idx], 1)
-        CONFIG_OBJ.Monitor[1].Index := idx
-
-        ; Change for Monitor2
-        len := imageArr2.Length
-        idx := CONFIG_OBJ.Monitor[2].Index + 1
-        if idx > len
-            idx := 1
-        ChangeWallpaper(imageArr2[idx], 2)
-        CONFIG_OBJ.Monitor[2].Index := idx
-
-        ; Update last modify time
-        CONFIG_OBJ.Update := A_Now
-
-        ; Dump updates into config file
-        saveConfigFile(CONFIG_FILE_PATH)
+        changeNext()
     }
 }
 
 ChangeWallpaper(imagePath, MonitorId){
     ExitCode := RunWait('"' CONFIG_OBJ.ExePath '" -m ' MonitorId-1 ' "' imagePath '" "' A_WorkingDir '"',,"Hide")
+    sleep(1000) ; wait windows changing wallpaper
 }
 
 init()
