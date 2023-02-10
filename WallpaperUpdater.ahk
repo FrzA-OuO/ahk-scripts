@@ -29,6 +29,7 @@ openConfigWindow(*){
 
     finishConfig(GuiCtrlObj, params*){
         saveConfigFile(CONFIG_FILE_PATH)
+        init()
         GuiCtrlObj.Gui.Submit()
     }
     
@@ -123,6 +124,17 @@ loadConfig(configObject){
     configObject.Interval := rootMap["Interval"]
 }
 
+loadImageArray(imageArray, path, op){
+    if InStr(op, "D"){
+        loop files, path "\*.*"{
+            if RegExMatch(A_LoopFileFullPath, "i)^.*\.(?:jpg|jpeg|png|bmp)$")
+                imageArray.Push(A_LoopFileFullPath)
+        }
+    }
+    else{
+        imageArray.Push(path)
+    }
+}
 
 init(){
     loadConfig(CONFIG_OBJ)
@@ -151,25 +163,8 @@ init(){
     global imageArr1 := Array()
     global imageArr2 := Array()
 
-    if InStr(f1e, "D"){
-        loop files, CONFIG_OBJ.Monitor[1].Path "\*.*"{
-            if RegExMatch(A_LoopFileFullPath, "i)^.*\.(?:jpg|jpeg|png|bmp)$")
-                imageArr1.Push(A_LoopFileFullPath)
-        }
-    }
-    else{
-        imageArr1.Push(CONFIG_OBJ.Monitor[1].Path)
-    }
-
-    if InStr(f2e, "D"){
-        loop files, CONFIG_OBJ.Monitor[2].Path "\*.*"{
-            if RegExMatch(A_LoopFileFullPath, "i)^.*\.(?:jpg|jpeg|png|bmp)$")
-                imageArr2.Push(A_LoopFileFullPath)
-        }
-    }
-    else{
-        imageArr2.Push(CONFIG_OBJ.Monitor[2].Path)
-    }
+    loadImageArray(imageArr1, CONFIG_OBJ.Monitor[1].Path, f1e )
+    loadImageArray(imageArr2, CONFIG_OBJ.Monitor[2].Path, f2e )
 }
 
 changeNext(*){
@@ -178,16 +173,20 @@ changeNext(*){
     idx := CONFIG_OBJ.Monitor[1].Index + 1
     if idx > len
         idx := 1
-    ChangeWallpaper(imageArr1[idx], 1)
-    CONFIG_OBJ.Monitor[1].Index := idx
+    if idx != CONFIG_OBJ.Monitor[1].Index{
+        ChangeWallpaper(imageArr1[idx], 1)
+        CONFIG_OBJ.Monitor[1].Index := idx
+    }
 
     ; Change for Monitor2
     len := imageArr2.Length
     idx := CONFIG_OBJ.Monitor[2].Index + 1
     if idx > len
         idx := 1
-    ChangeWallpaper(imageArr2[idx], 2)
-    CONFIG_OBJ.Monitor[2].Index := idx
+    if idx != CONFIG_OBJ.Monitor[2].Index{
+        ChangeWallpaper(imageArr2[idx], 2)
+        CONFIG_OBJ.Monitor[2].Index := idx
+    }
 
     ; Update last modify time
     CONFIG_OBJ.Update := A_Now
